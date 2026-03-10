@@ -1,0 +1,28 @@
+# config.yaml
+
+MODE: "sni_fronted" # direct | http_payload | sni_fronted
+FRONT_DOMAIN: "aus.hackkcah.xyz" # used only in sni_fronted
+
+# The local port on which we will run a SOCKS proxy
+LOCAL_SOCKS_PORT: 1080
+
+# The local port for the SSH bridge (standard SSH connects here)
+LOCAL_BRIDGE_PORT: 2222
+
+# The intermediate HTTP proxy or WebSocket proxy you connect to
+PROXY_HOST: "api-prod.palmmerchant.com"
+PROXY_PORT: 443
+
+# The ultimate SSH server that lives behind the WS tunnel
+TARGET_HOST: "aus.hackkcah.xyz"
+TARGET_PORT: 443 # The WebSocket gateway port, not the direct SSH port
+
+# The raw SSH daemon behind the WebSocket tunnel
+SSH_USERNAME: "supardi"
+SSH_PASSWORD: "supardi"
+SSH_PORT: 443 # The "internal" SSH port if needed by Paramiko handshake
+
+# The WebSocket handshake payload.
+# Use [host] for TARGET_HOST:TARGET_PORT.
+# Use [crlf] for newlines.
+PAYLOAD_TEMPLATE: "GET / HTTP/1.1[crlf]Host: [host][crlf]Connection: Upgrade[crlf]Upgrade: websocket[crlf]Expect: 100-continue[crlf][crlf]"
