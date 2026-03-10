@@ -26,3 +26,11 @@ SSH_PORT: 443 # The "internal" SSH port if needed by Paramiko handshake
 # Use [host] for TARGET_HOST:TARGET_PORT.
 # Use [crlf] for newlines.
 PAYLOAD_TEMPLATE: "GET / HTTP/1.1[crlf]Host: [host][crlf]Connection: Upgrade[crlf]Upgrade: websocket[crlf]Expect: 100-continue[crlf][crlf]"
+
+# Reconnection settings
+AUTO_RECONNECT: true
+RECONNECT_INTERVAL: 5 # seconds to wait before reconnecting
+
+# Speed limits (in KB/s). 0 = Unlimited.
+MAX_DOWNLOAD_SPEED: 0
+MAX_UPLOAD_SPEED: 0

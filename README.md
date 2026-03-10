@@ -70,6 +70,10 @@ PAYLOAD_TEMPLATE: "GET / HTTP/1.1[crlf]Host: [host][crlf]Upgrade: websocket[crlf
 | `SSH_USERNAME` | Your SSH account username. |
 | `SSH_PASSWORD` | Your SSH account password. |
 | `PAYLOAD_TEMPLATE` | Custom WebSocket handshake payload. |
+| `AUTO_RECONNECT` | Set to `true` to automatically retry on disconnection. |
+| `RECONNECT_INTERVAL` | Seconds to wait before each reconnection attempt. |
+| `MAX_DOWNLOAD_SPEED` | Max download speed in KB/s (0 = Unlimited). |
+| `MAX_UPLOAD_SPEED` | Max upload speed in KB/s (0 = Unlimited). |
 
 ## Installation & Dependencies
 
