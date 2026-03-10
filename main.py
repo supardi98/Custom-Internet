@@ -1,37 +1,79 @@
+# main.py
+
+import sys
 import time
+import subprocess
+import signal
 from config import CONFIG
 from tunnel_strategies import get_strategy
-from ssh_connector import connect_via_ws_and_start_socks
-def main():
-    """
-    1) Use ws_tunnel to do the WebSocket handshake with the remote proxy.
-    2) Wrap that socket in Paramiko's SSH transport.
-    3) Provide a local SOCKS proxy on CONFIG['LOCAL_SOCKS_PORT'].
-    4) Sleep or wait forever so it doesn't exit.
-    """
+from bridge_connector import start_ssh_bridge
+
+def run():
+    ssh_process = None
     try:
-        strategy_cls = get_strategy(CONFIG['MODE'])
-        ws_sock      = strategy_cls(CONFIG).establish()
+        mode = CONFIG.get('MODE', 'sni_fronted')
+        strategy_cls = get_strategy(mode)
+        
+        print(f"[*] Starting in mode: {mode}")
+        
+        # 1. Establish the underlying tunnel (WebSocket/SNI)
+        ws_sock = strategy_cls(CONFIG).establish()
+        
+        # 2. Start the local bridge
+        bridge_port = CONFIG.get('LOCAL_BRIDGE_PORT', 2222)
+        start_ssh_bridge(ws_sock, bridge_port)
+        
+        # 3. Automation: Prepare SSH variables
+        ssh_user = CONFIG.get('SSH_USERNAME', 'root')
+        ssh_pass = CONFIG.get('SSH_PASSWORD', '')
+        socks_port = CONFIG.get('LOCAL_SOCKS_PORT', 1080)
+        
+        # Tunggu sebentar agar port bridge benar-benar siap
+        time.sleep(1)
 
-        ssh_connection = connect_via_ws_and_start_socks(
-            ws_socket       = ws_sock,
-            ssh_user        = CONFIG['SSH_USERNAME'],
-            ssh_password    = CONFIG['SSH_PASSWORD'],
-            ssh_port        = CONFIG['SSH_PORT'],
-            local_socks_port= CONFIG['LOCAL_SOCKS_PORT'],
-        )
-
-        print(f"[+] SOCKS proxy up on 127.0.0.1:{CONFIG['LOCAL_SOCKS_PORT']}")
-        print("[+] All traffic through that proxy is forwarded over SSH via WS tunnel.")
-
-        # Keep running until user kills it (CTRL+C)
+        # Perintah SSH Otomatis
+        # -N: Do not execute a remote command (hanya untuk tunneling)
+        # -f: Go to background (tapi kita handle via subprocess saja)
+        cmd = [
+            "sshpass", "-p", ssh_pass,
+            "ssh",
+            "-o", "StrictHostKeyChecking=no",
+            "-o", "UserKnownHostsFile=/dev/null",
+            "-D", str(socks_port),
+            "-p", str(bridge_port),
+            "-N", # Penting: Agar SSH hanya fokus buat tunnel SOCKS saja
+            f"{ssh_user}@127.0.0.1"
+        ]
+        
+        print(f"[*] Launching SSH Client (SOCKS5 on port {socks_port})...")
+        
+        # Jalankan SSH di background
+        ssh_process = subprocess.Popen(cmd)
+        
+        print("-" * 50)
+        print(f"[SUCCESS] Tunnel & SOCKS5 Proxy AKTIF!")
+        print(f"[INFO] Gunakan SOCKS5 -> 127.0.0.1:{socks_port} di HP Anda.")
+        print("-" * 50)
+        print("[*] Tekan CTRL+C untuk berhenti.")
+        
+        # Loop utama untuk menjaga script tetap jalan
         while True:
-            time.sleep(999999)
+            # Cek apakah proses SSH masih hidup
+            if ssh_process.poll() is not None:
+                print("[!] SSH Client terputus. Mencoba berhenti...")
+                break
+            time.sleep(2)
 
     except KeyboardInterrupt:
-        print("[*] Shutting down (KeyboardInterrupt).")
+        print("\n[!] Menutup koneksi...")
     except Exception as e:
         print(f"[!] Error: {e}")
+    finally:
+        # Cleanup: Matikan proses SSH jika masih jalan
+        if ssh_process:
+            ssh_process.terminate()
+            print("[*] SSH Client dihentikan.")
+        sys.exit(0)
 
 if __name__ == "__main__":
-    main()
+    run()
