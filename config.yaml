@@ -33,6 +33,10 @@ PAYLOAD_TEMPLATE: "GET / HTTP/1.1[crlf]Host: [host][crlf]Connection: Upgrade[crl
 AUTO_RECONNECT: true
 RECONNECT_INTERVAL: 5 # seconds to wait before reconnecting
 
+# Ping settings
+PING_URL: "http://google.com"
+PING_ENABLED: true
+
 # Speed limits (in KB/s). 0 = Unlimited.
 MAX_DOWNLOAD_SPEED: 0
 MAX_UPLOAD_SPEED: 0

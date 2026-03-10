@@ -4,9 +4,26 @@ import sys
 import time
 import subprocess
 import signal
+import requests
 from config import CONFIG
 from tunnel_strategies import get_strategy
 from bridge_connector import start_ssh_bridge
+
+def ping_url():
+    """Pings a URL from the config before connecting."""
+    if not CONFIG.get('PING_ENABLED', False):
+        return
+        
+    url = CONFIG.get('PING_URL')
+    if not url:
+        return
+        
+    print(f"[*] Pinging URL: {url}...")
+    try:
+        response = requests.get(url, timeout=5)
+        print(f"[+] Ping response: {response.status_code}")
+    except Exception as e:
+        print(f"[!] Ping error: {e}")
 
 def run():
     auto_reconnect = CONFIG.get('AUTO_RECONNECT', True)
@@ -19,6 +36,9 @@ def run():
             strategy_cls = get_strategy(mode)
             
             print(f"[*] Starting in mode: {mode}")
+            
+            # 0. Ping the URL
+            ping_url()
             
             # 1. Establish the underlying tunnel (WebSocket/SNI)
             ws_sock = strategy_cls(CONFIG).establish()
