@@ -44,7 +44,9 @@ User-configurable values are now managed in **`config.yaml`**.
 MODE: "sni_fronted"             # direct | http_payload | sni_fronted
 FRONT_DOMAIN: "example.com"     # used only in sni_fronted
 
+LOCAL_SOCKS_HOST: "127.0.0.1"    # Use 0.0.0.0 to share the SOCKS proxy on your network
 LOCAL_SOCKS_PORT: 1080          # The SOCKS5 proxy port for your browser/apps
+LOCAL_BRIDGE_HOST: "127.0.0.1"   # Host for the internal bridge
 LOCAL_BRIDGE_PORT: 2222         # Internal bridge port (don't conflict)
 
 PROXY_HOST: "your.proxy.com"    # WebSocket/HTTP proxy endpoint
@@ -63,7 +65,9 @@ PAYLOAD_TEMPLATE: "GET / HTTP/1.1[crlf]Host: [host][crlf]Upgrade: websocket[crlf
 |-----|-------------|
 | `MODE` | `direct`, `http_payload`, or `sni_fronted`. |
 | `FRONT_DOMAIN` | SNI used in `sni_fronted` mode. |
+| `LOCAL_SOCKS_HOST` | Host/IP for the SOCKS proxy (default 127.0.0.1). |
 | `LOCAL_SOCKS_PORT` | The port you will use in your browser/app (default 1080). |
+| `LOCAL_BRIDGE_HOST` | Host for the local TCP bridge (default 127.0.0.1). |
 | `LOCAL_BRIDGE_PORT` | Port for the local TCP bridge (default 2222). |
 | `PROXY_HOST` | The hostname/IP of the proxy server. |
 | `TARGET_HOST` | The destination SSH WebSocket gateway. |

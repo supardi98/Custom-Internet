@@ -3,10 +3,12 @@
 MODE: "sni_fronted" # direct | http_payload | sni_fronted
 FRONT_DOMAIN: "aus.hackkcah.xyz" # used only in sni_fronted
 
-# The local port on which we will run a SOCKS proxy
+# The local host/IP on which we will run a SOCKS proxy (e.g. 127.0.0.1 or 0.0.0.0 for shared)
+LOCAL_SOCKS_HOST: "127.0.0.1"
 LOCAL_SOCKS_PORT: 1080
 
-# The local port for the SSH bridge (standard SSH connects here)
+# The local host/IP for the SSH bridge (standard SSH connects here)
+LOCAL_BRIDGE_HOST: "127.0.0.1"
 LOCAL_BRIDGE_PORT: 2222
 
 # The intermediate HTTP proxy or WebSocket proxy you connect to

@@ -22,16 +22,16 @@ class SSHBridge:
         self.max_download = max_download * 1024 # Convert to bytes
         self.max_upload = max_upload * 1024     # Convert to bytes
 
-    def start_bridge(self, local_port):
+    def start_bridge(self, local_port, local_host='127.0.0.1'):
         """
         Start a local TCP server that forwards all traffic to ws_socket.
         """
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.server_socket.bind(('127.0.0.1', local_port))
+        self.server_socket.bind((local_host, local_port))
         self.server_socket.listen(1)
         
-        print(f"[*] Bridge listening on 127.0.0.1:{local_port}")
+        print(f"[*] Bridge listening on {local_host}:{local_port}")
         if self.max_download > 0 or self.max_upload > 0:
             dl_str = f"{self.max_download//1024} KB/s" if self.max_download > 0 else "Unlimited"
             ul_str = f"{self.max_upload//1024} KB/s" if self.max_upload > 0 else "Unlimited"
@@ -92,7 +92,7 @@ class SSHBridge:
             src.close()
             dst.close()
 
-def start_ssh_bridge(ws_socket, local_port, max_download=0, max_upload=0):
+def start_ssh_bridge(ws_socket, local_port, local_host='127.0.0.1', max_download=0, max_upload=0):
     bridge = SSHBridge(ws_socket, max_download, max_upload)
-    bridge.start_bridge(local_port)
+    bridge.start_bridge(local_port, local_host)
     return bridge

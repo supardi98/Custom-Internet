@@ -24,40 +24,45 @@ def run():
             ws_sock = strategy_cls(CONFIG).establish()
             
             # 2. Start the local bridge
+            bridge_host = CONFIG.get('LOCAL_BRIDGE_HOST', '127.0.0.1')
             bridge_port = CONFIG.get('LOCAL_BRIDGE_PORT', 2222)
             max_dl = CONFIG.get('MAX_DOWNLOAD_SPEED', 0)
             max_ul = CONFIG.get('MAX_UPLOAD_SPEED', 0)
-            start_ssh_bridge(ws_sock, bridge_port, max_download=max_dl, max_upload=max_ul)
-            
+            start_ssh_bridge(ws_sock, bridge_port, local_host=bridge_host, max_download=max_dl, max_upload=max_ul)
+
             # 3. Automation: Prepare SSH variables
             ssh_user = CONFIG.get('SSH_USERNAME', 'root')
             ssh_pass = CONFIG.get('SSH_PASSWORD', '')
+            socks_host = CONFIG.get('LOCAL_SOCKS_HOST', '127.0.0.1')
             socks_port = CONFIG.get('LOCAL_SOCKS_PORT', 1080)
-            
+
             # Tunggu sebentar agar port bridge benar-benar siap
             time.sleep(1)
 
             # Perintah SSH Otomatis
+            # Using -D socks_host:socks_port to allow shared proxy if host is 0.0.0.0
             cmd = [
                 "sshpass", "-p", ssh_pass,
                 "ssh",
                 "-o", "StrictHostKeyChecking=no",
                 "-o", "UserKnownHostsFile=/dev/null",
-                "-D", str(socks_port),
+                "-D", f"{socks_host}:{socks_port}",
                 "-p", str(bridge_port),
                 "-N",
-                f"{ssh_user}@127.0.0.1"
+                f"{ssh_user}@{bridge_host}"
             ]
-            
-            print(f"[*] Launching SSH Client (SOCKS5 on port {socks_port})...")
-            
+
+
+            print(f"[*] Launching SSH Client (SOCKS5 on {socks_host}:{socks_port})...")
+
             # Jalankan SSH di background
             ssh_process = subprocess.Popen(cmd)
-            
+
             print("-" * 50)
             print(f"[SUCCESS] Tunnel & SOCKS5 Proxy AKTIF!")
-            print(f"[INFO] Gunakan SOCKS5 -> 127.0.0.1:{socks_port}")
+            print(f"[INFO] Gunakan SOCKS5 -> {socks_host}:{socks_port}")
             print("-" * 50)
+
             print("[*] Tekan CTRL+C untuk berhenti.")
             
             # Loop utama untuk menjaga script tetap jalan

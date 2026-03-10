@@ -48,19 +48,19 @@ class SSHOverWebSocket:
         if self.transport is not None:
             self.transport.close()
 
-    def open_socks_proxy(self, local_port):
+    def open_socks_proxy(self, local_port, local_host='127.0.0.1'):
         """
         Start a small SOCKS4/5 server on local_port that forwards
         connections through the SSH transport.
 
         The user can configure their browser or app to use
-        127.0.0.1:local_port as a SOCKS proxy.
+        local_host:local_port as a SOCKS proxy.
         """
         server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        server.bind(('0.0.0.0', local_port))
+        server.bind((local_host, local_port))
         server.listen(100)
-        print(f"[*] SOCKS proxy listening on 127.0.0.1:{local_port}")
+        print(f"[*] SOCKS proxy listening on {local_host}:{local_port}")
 
         def handle_socks_client(client_sock):
             try:
@@ -315,7 +315,7 @@ class SSHOverWebSocket:
         return data
 
 
-def connect_via_ws_and_start_socks(ws_socket, ssh_user, ssh_password, ssh_port, local_socks_port):
+def connect_via_ws_and_start_socks(ws_socket, ssh_user, ssh_password, ssh_port, local_socks_port, local_socks_host='127.0.0.1'):
     """
     A convenience function:
       1) Start SSH transport over the ws_socket
@@ -323,6 +323,6 @@ def connect_via_ws_and_start_socks(ws_socket, ssh_user, ssh_password, ssh_port, 
     """
     connector = SSHOverWebSocket(ws_socket, ssh_user, ssh_password, ssh_port)
     connector.start_ssh_transport()
-    connector.open_socks_proxy(local_socks_port)
+    connector.open_socks_proxy(local_socks_port, local_socks_host)
     # Keep the object in scope so it’s not garbage-collected
     return connector
