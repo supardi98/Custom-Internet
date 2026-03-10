@@ -16,20 +16,11 @@ This project demonstrates tunneling SSH through a WebSocket “proxy” endpoint
 
 ## How It Works
 
-1. **Strategy Selection**  
-   - Based on `CONFIG['MODE']`, `main.py` picks one of three strategies (in `tunnel_strategies.py`) to establish the underlying socket.
+1. **Strategy Selection**: Based on `MODE` in `config.yaml`, the script establishes a raw connection (TCP or TLS) to the proxy.
+2. **WebSocket Handshake**: `ws_tunnel.py` performs the HTTP/WebSocket upgrade handshake.
+3. **Local SSH Bridge**: `bridge_connector.py` creates a local TCP listener (port 2222 by default) that pipes data into the established WebSocket tunnel.
+4. **Automated SSH Client**: `main.py` launches a system `ssh` command using `sshpass` to authenticate. It connects to the local bridge and creates a **SOCKS5 Proxy** on the configured port.
 
-2. **WebSocket Connection**  
-   - `ws_tunnel.py` (called by the strategy) connects to the proxy and sends the WebSocket / HTTP upgrade handshake defined in `CONFIG['PAYLOAD_TEMPLATE']`.  
-   - On success (`101 Switching Protocols` or equivalent), the socket is left in raw mode.
-
-3. **SSH Transport**  
-   - The raw socket is handed to `paramiko.Transport`, which starts the SSH client.  
-   - Authentication uses `SSH_USERNAME` and `SSH_PASSWORD`.
-
-4. **SOCKS Proxy**  
-   - `ssh_connector.py` opens a SOCKS4/5 proxy on `CONFIG['LOCAL_SOCKS_PORT']`.  
-   - Each incoming SOCKS connection is mapped to a Paramiko "direct-tcpip" channel, forwarding traffic through SSH.
 
 ## Project Structure
 
@@ -47,76 +38,84 @@ This project demonstrates tunneling SSH through a WebSocket “proxy” endpoint
 
 ## Configuration
 
-All user-configurable values are in **`config.py`**:
-```python
-CONFIG = {
-    'LOCAL_SOCKS_PORT': 1080,        # SOCKS listener port
+User-configurable values are now managed in **`config.yaml`**. 
 
-    'PROXY_HOST': '',                # WebSocket/HTTP proxy endpoint
-    'PROXY_PORT': 80,
+```yaml
+MODE: "sni_fronted"             # direct | http_payload | sni_fronted
+FRONT_DOMAIN: "example.com"     # used only in sni_fronted
 
-    'TARGET_HOST': '',               # SSH-over-WS gateway behind the proxy
-    'TARGET_PORT': 80,
+LOCAL_SOCKS_PORT: 1080          # The SOCKS5 proxy port for your browser/apps
+LOCAL_BRIDGE_PORT: 2222         # Internal bridge port (don't conflict)
 
-    'SSH_USERNAME': '',              # SSH auth credentials
-    'SSH_PASSWORD': '',
-    'SSH_PORT': 22,                  # Internal SSH port (usually 22)
+PROXY_HOST: "your.proxy.com"    # WebSocket/HTTP proxy endpoint
+PROXY_PORT: 443
 
-    'PAYLOAD_TEMPLATE': (            # HTTP/WS upgrade string with placeholders
-        "GET / HTTP/1.1[crlf]Host: example.website[crlf]"
-        "Expect: 100-continue[crlf][crlf]"
-        "GET / HTTP/1.1[crlf]Host: [host][crlf]Upgrade: websocket[crlf][crlf]"
-    ),
+TARGET_HOST: "ssh-ws.com"       # The SSH-over-WS gateway
+TARGET_PORT: 443
 
-    'MODE': 'http_payload',          # tunnel mode: direct | http_payload | sni_fronted
-    'FRONT_DOMAIN': '',              # used only when MODE='sni_fronted'
-}
+SSH_USERNAME: "your_user"
+SSH_PASSWORD: "your_password"
+
+PAYLOAD_TEMPLATE: "GET / HTTP/1.1[crlf]Host: [host][crlf]Upgrade: websocket[crlf][crlf]"
 ```
 
-| Key                 | Description                                                                                                              |
-|---------------------|--------------------------------------------------------------------------------------------------------------------------|
-| `LOCAL_SOCKS_PORT`  | Port on which the local SOCKS proxy will listen (default 1080).                                                         |
-| `PROXY_HOST`        | Hostname or IP for the WebSocket/HTTP proxy.                                                                            |
-| `PROXY_PORT`        | Port for the proxy (e.g., 80 or 443).                                                                                   |
-| `TARGET_HOST`       | The SSH-over-WebSocket gateway address (behind the proxy).                                                              |
-| `TARGET_PORT`       | The port on the gateway for WebSocket upgrade (not the SSH port).                                                       |
-| `SSH_USERNAME`      | SSH username for Paramiko authentication.                                                                               |
-| `SSH_PASSWORD`      | SSH password for Paramiko authentication.                                                                               |
-| `SSH_PORT`          | The "internal" SSH port used by Paramiko once the tunnel is established.                                               |
-| `PAYLOAD_TEMPLATE`  | The HTTP/WebSocket upgrade string. `[host]` → `TARGET_HOST:TARGET_PORT`; `[crlf]` → `\r\n`.                           |
-| `MODE`              | Selects the tunnel strategy:                                                                                             |
-|                     | • `direct`      — TCP straight to `TARGET_HOST:TARGET_PORT`                                                               |
-|                     | • `http_payload`— Plain TCP to `PROXY_HOST` + custom HTTP/WS payload                                                     |
-|                     | • `sni_fronted` — TLS to `PROXY_HOST` with SNI=`FRONT_DOMAIN`, then HTTP/WS payload                                     |
-| `FRONT_DOMAIN`      | Domain to use for SNI when `MODE='sni_fronted'` (falls back to `PROXY_HOST` if empty).                                  |
+| Key | Description |
+|-----|-------------|
+| `MODE` | `direct`, `http_payload`, or `sni_fronted`. |
+| `FRONT_DOMAIN` | SNI used in `sni_fronted` mode. |
+| `LOCAL_SOCKS_PORT` | The port you will use in your browser/app (default 1080). |
+| `LOCAL_BRIDGE_PORT` | Port for the local TCP bridge (default 2222). |
+| `PROXY_HOST` | The hostname/IP of the proxy server. |
+| `TARGET_HOST` | The destination SSH WebSocket gateway. |
+| `SSH_USERNAME` | Your SSH account username. |
+| `SSH_PASSWORD` | Your SSH account password. |
+| `PAYLOAD_TEMPLATE` | Custom WebSocket handshake payload. |
 
 ## Installation & Dependencies
 
-- **Python 3.7+** recommended  
-- [**Paramiko**](https://pypi.org/project/paramiko/) for SSH  
-- Standard library (`socket`, `threading`, `ssl`, etc.)
+### 1. System Packages
 
-Install Paramiko:
+This tool requires `openssh-client` and `sshpass` to handle the SSH connection and SOCKS tunneling.
+
+**Ubuntu / Debian / Linux Mint:**
 ```bash
-pip install paramiko
+sudo apt update
+sudo apt install python3 python3-pip openssh-client sshpass -y
 ```
+
+**Termux (Android):**
+```bash
+pkg update
+pkg install python openssh sshpass -y
+```
+
+### 2. Python Dependencies
+
+The project uses `PyYAML` to load configuration from `config.yaml`.
+
+```bash
+pip install pyyaml
+```
+
+*(Note: While `paramiko` is included in the project files as an alternative, the default `main.py` flow uses the system `ssh` command.)*
 
 ## Usage
 
-1. **Configure**: Edit `config.py` with the correct hosts, ports, credentials, `MODE`, and—if using SNI fronting—`FRONT_DOMAIN`.
+1. **Configure**: Edit **`config.yaml`** with the correct hosts, ports, credentials, and `MODE`.
 2. **Run**:
    ```bash
    python main.py
    ```
 3. **Use the SOCKS Proxy**: Once running, you’ll see:
    ```
+   [*] Starting in mode: sni_fronted
    [*] WebSocket handshake done. Returning raw socket.
-   [*] SSH transport established and authenticated.
-   [*] SOCKS proxy listening on 127.0.0.1:1080
-   [+] SOCKS proxy up on 127.0.0.1:1080
-   [+] All traffic through that proxy is forwarded over SSH via WS tunnel.
+   [*] Bridge listening on 127.0.0.1:2222
+   [*] Launching SSH Client (SOCKS5 on port 1080)...
+   [SUCCESS] Tunnel & SOCKS5 Proxy AKTIF!
+   [INFO] Gunakan SOCKS5 -> 127.0.0.1:1080 in your browser/app.
    ```
-   - Configure your application or browser to use **SOCKS5** (or **SOCKS4**) at `127.0.0.1:1080`.
+   - Configure your application or browser to use **SOCKS5** at `127.0.0.1:1080`.
 
 ## Tor/Browser Configuration
 
