@@ -102,7 +102,7 @@ pkg install python openssh sshpass -y
 The project uses `PyYAML` to load configuration from `config.yaml`.
 
 ```bash
-pip install pyyaml
+pip install pyyaml requests
 ```
 
 *(Note: While `paramiko` is included in the project files as an alternative, the default `main.py` flow uses the system `ssh` command.)*
